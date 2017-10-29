@@ -6,37 +6,55 @@ defmodule TreeStorage do
   ## Manage tree-like structure.
   """
 
-  def find([], _), do: nil
-  def find([tree_h|tree_t], condition),
-    do: find(tree_h, condition) || find(tree_t, condition)
-  def find({name, meta, index} = tree, condition) do
-    cond do
-      condition.(tree) -> [{name, meta}]
-      is_list(index) and find(index, condition) != nil
-        -> [{name, meta}|find(index, condition)]
-      true -> nil
-    end
-  end
+  @tree :tree
+  @leaf :leaf
 
-  def get([{name, _, _} = leaf|_], [name]), do: leaf
-  def get([{path_h, _, index}|_], [path_h|path_t]), do: get(index, path_t)
-  def get([_|t], path), do: get(t, path)
+  def leaf(name, data), do: {@leaf, name, data}
+  def tree(name, tree), do: check_tree(tree) && {@tree, name, tree}
 
-  def replace([{name, _, _}|tree_t], [name], input), do: [input|tree_t]
-  def replace([{name, meta, index}|tree_t], [name|path_t], input),
-    do: [{name, meta, replace(index, path_t, input)}|tree_t]
-  def replace([tree_h|tree_t], path, input), do: [tree_h|replace(tree_t, path, input)]
+  def find(tree, condition) when is_function(condition),
+    do: check_tree(tree) && _find(tree, condition)
+  defp _find([], _condition), do: nil
+  defp _find([h|t], condition),
+    do: _find(h, condition) || _find(t, condition)
+  defp _find({@leaf, name, leaf}, condition),
+    do: condition.(leaf) && [name]
+  defp _find({@tree, name, tree}, condition),
+    do: (path = _find(tree, condition)) && [name|path]
 
-  def reduce(tree, leaf_fun, tree_fun, init),
-    do: reduce_inp(tree, leaf_fun, tree_fun, init, init)
+  def get(tree, path) when is_list(path),
+    do: check_tree(tree) && _get(tree, path)
+  defp _get(tree, []), do: tree
+  defp _get([{_, name, tree}|t], [h_p|t_p]=path),
+    do: (name == h_p && _get(tree, t_p)) || _get(t, path)
 
-  defp reduce_inp([] ,_, _, _, acc), do: acc
-  defp reduce_inp([{name, meta, tree}=h|t], leaf_fun, tree_fun,
+  def replace(tree, path, input) when is_list(path),
+    do: check_tree(tree) &&
+      (case input do
+        {@leaf, _, _} -> true
+        {@tree, _, input_tree} -> check_tree(input_tree) end) &&
+    _replace(tree, path, input)
+  defp _replace(_, [], input), do: input
+  defp _replace([{_, h_p, _}=h|t], [h_p|t_p], input),
+    do: [_replace(h, t_p, input)|t]
+  defp _replace([h|t], path, input), do: [h|_replace(t, path, input)]
+
+  def reduce(tree, leaf_fun, tree_fun, init)
+    when is_function(leaf_fun) and is_function(tree_fun),
+    do: check_tree(tree) && _reduce(tree, leaf_fun, tree_fun, init, init)
+  defp _reduce([] ,_, _, _, acc), do: acc
+  defp _reduce([{name, meta, tree}=h|t], leaf_fun, tree_fun,
     init, acc) when is_list(tree) do
-    reduced_tree = reduce_inp(tree, leaf_fun, tree_fun, init, init)
+    reduced_tree = _reduce(tree, leaf_fun, tree_fun, init, init)
     new_acc = tree_fun.({name, meta, reduced_tree}, acc)
-    reduce_inp(t, leaf_fun, tree_fun, init, new_acc)
+    _reduce(t, leaf_fun, tree_fun, init, new_acc)
   end
-  defp reduce_inp([h|t], leaf_fun, tree_fun, init, acc),
-    do: reduce_inp(t, leaf_fun, tree_fun, init, leaf_fun.(h, acc))
+  defp _reduce([h|t], leaf_fun, tree_fun, init, acc),
+    do: _reduce(t, leaf_fun, tree_fun, init, leaf_fun.(h, acc))
+
+  def check_tree([]), do: true
+  def check_tree([{@leaf, _, _}|t]), do: check_tree(t)
+  def check_tree([{@tree, _, tree}|t]), do: check_tree(tree) && check_tree(t)
+  def check_tree(tree),
+    do: raise "Tree has invalid structure: #{tree |> inspect}"
 end
