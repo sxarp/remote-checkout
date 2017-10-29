@@ -26,12 +26,29 @@ defmodule TreeStorageTest do
   end
 
   test "replace" do
-    replaced_node = {:name, :meta, :data}
-    new_node = {:name, :new_meta, :new_data}
-    assert TreeStorage.replace([replaced_node], [:name], new_node) == [new_node]
-    random_nodes = for n <- 1..20, do: {n, n, n}
-    assert TreeStorage.replace(random_nodes ++ [replaced_node|random_nodes], [:name], new_node) == random_nodes ++ [new_node|random_nodes]
+    replaced_leaf = {:name, :meta, :data}
+    new_leaf = {:name, :new_meta, :new_data}
+    assert TreeStorage.replace([replaced_leaf], [:name], new_leaf) == [new_leaf]
+    random_leafs = for n <- 1..20, do: {n, n, n}
+    assert TreeStorage.replace(random_leafs ++ [replaced_leaf|random_leafs], [:name], new_leaf) == random_leafs ++ [new_leaf|random_leafs]
 
-    assert TreeStorage.replace(random_nodes ++ [{:parent, nil, [replaced_node]}|random_nodes], [:parent, :name], new_node) == random_nodes ++ [{:parent, nil, [new_node]}|random_nodes]
+    assert TreeStorage.replace(random_leafs ++ [{:parent, nil, [replaced_leaf]}|random_leafs], [:parent, :name], new_leaf) == random_leafs ++ [{:parent, nil, [new_leaf]}|random_leafs]
+  end
+
+  test "reduce" do
+    tree = [{:name, :_meta, 1}, {:name, :_meta, 1}]
+    assert 2 == TreeStorage.reduce(tree,
+      fn {_, _, x}, enum -> x + enum end,
+      fn {_, _, x}, enum -> x + enum end,
+      0)
+    tree = tree ++ [{:name, :_meta, tree}] ++ tree
+    assert 6 == TreeStorage.reduce(tree,
+      fn {_, _, x}, enum -> x + enum end,
+      fn {_, _, x}, enum -> x + enum end,
+      0)
+    assert [1, 1, 1, 1, 1, 1] == TreeStorage.reduce(tree,
+      fn {_, _, x}, enum -> [x] ++ enum end,
+      fn {_, _, x}, enum -> x ++ enum end,
+      [])
   end
 end
