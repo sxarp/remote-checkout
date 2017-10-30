@@ -26,32 +26,23 @@ defmodule TreeStorageTest do
 
   test "replace" do
     old_leaf = TS.leaf(:name, :data)
-    new_leaf = TS.leaf(:new_name, :new_data)
+    new_leaf = TS.leaf(:name, :new_data)
     old_tree = [old_leaf]
     new_tree = [new_leaf]
-    assert TS.replace(old_tree, [:name], new_leaf) == new_tree
+    assert TS.replace(old_tree, [:name], :new_data) == new_tree
 
     leafs = for n <- 1..20, do: TS.leaf(n, n)
     old_tree = leafs ++ [TS.tree(:parent, leafs ++ [old_leaf] ++ leafs)] ++ leafs
     new_tree = leafs ++ [TS.tree(:parent, leafs ++ [new_leaf] ++ leafs)] ++ leafs
-    assert TS.replace(old_tree, [:parent, :name], new_leaf) == new_tree
+    assert TS.replace(old_tree, [:parent, :name], :new_data) == new_tree
   end
 
-  @tag :skip
   test "reduce" do
-    tree = [{:name, :_meta, 1}, {:name, :_meta, 1}]
-    assert 2 == TS.reduce(tree,
-      fn {_, _, x}, enum -> x + enum end,
-      fn {_, _, x}, enum -> x + enum end,
-      0)
-    tree = tree ++ [{:name, :_meta, tree}] ++ tree
-    assert 6 == TS.reduce(tree,
-      fn {_, _, x}, enum -> x + enum end,
-      fn {_, _, x}, enum -> x + enum end,
-      0)
-    assert [1, 1, 1, 1, 1, 1] == TS.reduce(tree,
-      fn {_, _, x}, enum -> [x] ++ enum end,
-      fn {_, _, x}, enum -> x ++ enum end,
-      [])
+    tree = for n <- 1..4, do: TS.leaf(n, n)
+    leaf_fun = fn acc, _, x -> x + acc end
+    tree_fun = leaf_fun
+    assert 10 == TS.reduce(tree, leaf_fun, tree_fun, 0)
+    new_tree = tree ++ [TS.tree(:name, tree)] ++ tree
+    assert 30 == TS.reduce(new_tree, leaf_fun, tree_fun, 0)
   end
 end

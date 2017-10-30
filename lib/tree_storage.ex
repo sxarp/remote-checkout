@@ -29,14 +29,10 @@ defmodule TreeStorage do
     do: (name == h_p && _get(tree, t_p)) || _get(t, path)
 
   def replace(tree, path, input) when is_list(path),
-    do: check_tree(tree) &&
-      (case input do
-        {@leaf, _, _} -> true
-        {@tree, _, input_tree} -> check_tree(input_tree) end) &&
-    _replace(tree, path, input)
-  defp _replace([{_, name, _}|t], [name], input), do: [input|t]
-  defp _replace([{@tree, name, tree}|t], [name|path], input),
-    do: [{@tree, name, _replace(tree, path, input)}|t]
+    do: check_tree(tree) && _replace(tree, path, input)
+  defp _replace(_, [], input), do: input
+  defp _replace([{type, name, data}|t], [name|path], input),
+    do: [{type, name, _replace(data, path, input)}|t]
   defp _replace([h|t], path, input), do: [h|_replace(t, path, input)]
 
   def reduce(tree, leaf_fun, tree_fun, init)
