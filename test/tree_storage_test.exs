@@ -32,12 +32,9 @@ defmodule TreeStorageTest do
     assert TS.replace(old_tree, [:name], new_leaf) == new_tree
 
     leafs = for n <- 1..20, do: TS.leaf(n, n)
-    IO.inspect leafs
     old_tree = leafs ++ [TS.tree(:parent, leafs ++ [old_leaf] ++ leafs)] ++ leafs
     new_tree = leafs ++ [TS.tree(:parent, leafs ++ [new_leaf] ++ leafs)] ++ leafs
     assert TS.replace(old_tree, [:parent, :name], new_leaf) == new_tree
-
-    #assert TS.replace(random_leafs ++ [{:parent, nil, [replaced_leaf]}|random_leafs], [:parent, :name], new_leaf) == random_leafs ++ [{:parent, nil, [new_leaf]}|random_leafs]
   end
 
   @tag :skip

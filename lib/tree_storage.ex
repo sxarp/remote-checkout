@@ -34,9 +34,9 @@ defmodule TreeStorage do
         {@leaf, _, _} -> true
         {@tree, _, input_tree} -> check_tree(input_tree) end) &&
     _replace(tree, path, input)
-  defp _replace(_, [], input), do: input
-  defp _replace([{_, h_p, _}=h|t], [h_p|t_p], input),
-    do: [_replace(h, t_p, input)|t]
+  defp _replace([{_, name, _}|t], [name], input), do: [input|t]
+  defp _replace([{@tree, name, tree}|t], [name|path], input),
+    do: [{@tree, name, _replace(tree, path, input)}|t]
   defp _replace([h|t], path, input), do: [h|_replace(t, path, input)]
 
   def reduce(tree, leaf_fun, tree_fun, init)
