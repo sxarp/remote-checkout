@@ -41,12 +41,14 @@ defmodule TreeStorage do
   defp _reduce([] ,_, _, _, acc), do: acc
   defp _reduce([{@tree, name, tree}|t], leaf_fun, tree_fun, init, acc),
     do: _reduce(t, leaf_fun, tree_fun, init,
-       tree_fun.(acc, name, _reduce(tree, leaf_fun, tree_fun, init, init)))
+    tree_fun.(acc, name, _reduce(tree, leaf_fun, tree_fun, init, init)))
   defp _reduce([{@leaf, name, leaf}|t], leaf_fun, tree_fun, init, acc),
     do: _reduce(t, leaf_fun, tree_fun, init, leaf_fun.(acc, name, leaf))
 
   def check_tree([]), do: true
   def check_tree([{@leaf, _, _}|t]), do: check_tree(t)
-  def check_tree([{@tree, _, tree}|t]), do: check_tree(tree) && check_tree(t)
-  def check_tree(tree), do: raise "Invalid tree structure: #{inspect tree}"
+  def check_tree([{@tree, _, tree}|t]),
+    do: check_tree(tree) && check_tree(t)
+  def check_tree(tree),
+    do: raise "Invalid tree structure: #{inspect tree}"
 end
