@@ -9,27 +9,28 @@ defmodule FetchGithub do
 
   def get_branch(branch_name, owner, repo_name, token),
     do: query_for_branch(owner, repo_name, branch_name)
-    |> to_json |> graphql_request(token)
+    |> to_json |> graphql_request(to_header token)
     |> parse_json |> parse_branch_response
 
   def get_tree(oid, owner, repo_name, token),
     do: query_for_tree(oid, owner, repo_name)
-    |> to_json |> graphql_request(token)
+    |> to_json |> graphql_request(to_header token)
     |> parse_json |> parse_tree_response
 
   def get_blob(oid, owner, repo_name, token),
-    do: request_blob(oid, owner, repo_name, token)
+    do: url_for_blob(oid, owner, repo_name)
+    |> HTTPoison.get(to_header token)
     |> parse_json |> parse_blob_response
 
   def to_json(query), do: "{\"query\": \"#{
     query |> String.replace("\n", "") |> String.replace("\"", "\\\"")
     }\"}"
 
-  def graphql_request(request_body, token),
+  def graphql_request(request_body, header),
     do: HTTPoison.post "https://api.github.com/graphql",
-    request_body, header(token)
+    request_body, header
 
-  def header(token), do: [Authorization: "Bearer #{token}",
+  def to_header(token), do: [Authorization: "Bearer #{token}",
     Accept: "Application/json; Charset=utf-8"]
 
   def parse_json({:ok, %{status_code: 200, body: body}}),
@@ -63,9 +64,9 @@ defmodule FetchGithub do
   def parse_branch_response(%{"data" => %{"repository" => %{"ref" =>
     %{"target" => %{"tree" => %{"oid" => oid}}}}}}), do: oid
 
-  def request_blob(oid, owner, repo_name, token),
-    do: HTTPoison.get "https://api.github.com/repos/#{
-      owner}/#{repo_name}/git/blobs/#{oid}", header(token)
+  def url_for_blob(oid, owner, repo_name), 
+    do: "https://api.github.com/repos/#{owner}/#{
+        repo_name}/git/blobs/#{oid}"
 
   def parse_blob_response(%{"content" => content}),
     do: content |> String.replace("\n", "") |> Base.decode64!
