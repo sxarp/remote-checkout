@@ -18,7 +18,7 @@ defmodule TreeStorage do
   defp _find([h|t], condition),
     do: _find(h, condition) || _find(t, condition)
   defp _find({@leaf, name, leaf}, condition),
-    do: condition.(leaf) && [name]
+    do: condition.(name, leaf) && [name]
   defp _find({@tree, name, tree}, condition),
     do: (path = _find(tree, condition)) && [name|path]
 

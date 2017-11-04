@@ -7,13 +7,13 @@ defmodule TreeStorageTest do
   @leaf :leaf
 
   test "Basic test for find" do
-    con = fn data -> data == :ok end
+    con = fn _name, data -> data == :ok end
     assert TS.find([{@leaf, :name, :ok}], con) == [:name]
     assert TS.find([{@leaf, nil, nil}, {@leaf, :name, :ok}], con) == [:name]
   end
 
   test "find when head is list" do
-    con = fn data -> data == :ok end
+    con = fn _name, data -> data == :ok end
     assert TS.find([{@tree, :parent, [{@leaf, :name, :ok}]}], con) == [:parent, :name]
     assert TS.find([{@leaf, nil, nil}, {@tree, :parent, [{@leaf, nil, nil}, {@leaf, :name, :ok}]}], con) == [:parent, :name]
     assert TS.find([{@leaf, nil, nil}, {@tree, :parent, [{@leaf, nil, nil}, {@leaf, :name, :no}]}], con) == nil

@@ -10,7 +10,6 @@ defmodule FetchGithubTest do
 
 
   test "query_for_tree" do
-
     lhs = """
     query{
     repository(owner: "#{@owner}", name: "#{@repo_name}"){
@@ -31,7 +30,6 @@ defmodule FetchGithubTest do
   end
 
   test "query_for_branch" do
-
     lhs ="""
     query{
     repository(owner: "#{@owner}", name: "#{@repo_name}"){
