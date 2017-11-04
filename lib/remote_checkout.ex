@@ -14,8 +14,18 @@ defmodule RemoteCheckout do
   @repo_name :repo_name
   @token :token
 
-  def create_branch_info(binf=%{@branch_name => _, @owner => _,
-    @repo_name => _, @token => _}), do: binf
+  def fetch_tree(binf=%{@branch_name => _, @owner => _,
+    @repo_name => _, @token => _}, path \\ []) do
+    tt = target_tree(binf, path)
+    {export_tree(tt), enumerate_files(tt)}
+  end
+
+  def get_blobs(files, binf), do: files
+    |> Enum.map(fn {_, oid} -> {oid, get_blob(oid, binf)} end)
+    |> Map.new()
+
+  def target_tree(binf, path), do: get_branch(binf)
+    |> get_tree(binf) |> expand_tree(binf) |> TS.get(path)
 
   def get_branch(%{@branch_name => bn, @owner => ow, @repo_name => rn,
     @token => to}), do: FG.get_branch(bn, ow, rn, to)
@@ -26,20 +36,19 @@ defmodule RemoteCheckout do
   def get_blob(oid, %{@owner => ow, @repo_name => rn, @token => to}),
     do: FG.get_blob(oid, ow, rn, to)
 
-  def expand_tree(tree, bf),
+  def expand_tree(tree, binf),
     do: (case find_expand(tree) do
       nil -> tree
-      path -> grow_tree(tree, path, bf) |> expand_tree(bf) end)
+      path -> grow_tree(tree, path, binf) |> expand_tree(binf) end)
 
-  def grow_tree(tree, path, bf),
-    do: tree |> get_expand(path) |> get_tree(bf) |> replace(tree, path)
-
-  def to_tree_element(%{"name" => name, "oid" => oid, "type" => type}),
-    do: (case type do
-      "blob" -> TS.leaf(name, oid)
-      "tree" -> TS.tree(name, [TS.leaf(@expand, oid)]) end)
+  def grow_tree(tree, path, binf),
+    do: tree |> get_expand(path) |> get_tree(binf) |> replace(tree, path)
 
   def to_tree(tree), do: tree |> Enum.map(&to_tree_element/1)
+  def to_tree_element(%{"name" => name, "oid" => oid, "type" => "blob"}),
+    do: TS.leaf(name, oid)
+  def to_tree_element(%{"name" => name, "oid" => oid, "type" => "tree"}),
+    do: TS.tree(name, [TS.leaf(@expand, oid)])
   
   def replace(input, tree, path), do: TS.replace(tree, path, input)
 
@@ -54,4 +63,12 @@ defmodule RemoteCheckout do
     |> (fn [@expand|p] -> p end).() |> Enum.reverse()
   
   def get_expand(tree, path), do: TS.get(tree, path ++ [@expand])
+
+  def export_tree(tree), do: TS.reduce(tree, &append/3, &append/3, [])
+  def append(acc, name, data), do: [{name, data}|acc]
+
+  def enumerate_files(tree), do: TS.reduce(tree,
+                fn acc, name, oid -> [{name, oid}|acc] end,
+                fn acc, _, oids -> oids ++ acc end, [])
+
 end
