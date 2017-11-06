@@ -35,6 +35,7 @@ defmodule FetchGithub do
 
   def parse_json({:ok, %{status_code: 200, body: body}}),
     do: body |> Poison.decode!
+  def parse_json(r), do: raise "Failed to parse response: #{inspect r}"
 
   def query_for_tree(oid, owner, repo_name), do: """
     query{
@@ -50,6 +51,8 @@ defmodule FetchGithub do
 
   def parse_tree_response(%{"data" => %{"repository" => %{"object" =>
     %{"__typename" => "Tree", "entries" => entries}}}}), do: entries
+  def parse_tree_response(r),
+    do: raise "The response is not tree object: #{inspect r}"
 
   def query_for_branch(owner, repo_name, branch_name), do: """
     query{
@@ -63,6 +66,8 @@ defmodule FetchGithub do
 
   def parse_branch_response(%{"data" => %{"repository" => %{"ref" =>
     %{"target" => %{"tree" => %{"oid" => oid}}}}}}), do: oid
+  def parse_branch_response(r),
+    do: "Specifed repository returned in valid response: #{inspect r}"
 
   def url_for_blob(oid, owner, repo_name), 
     do: "https://api.github.com/repos/#{owner}/#{

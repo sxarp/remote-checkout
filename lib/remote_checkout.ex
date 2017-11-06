@@ -45,6 +45,7 @@ defmodule RemoteCheckout do
     do: tree |> get_expand(path) |> get_tree(binf) |> replace(tree, path)
 
   def to_tree(tree), do: tree |> Enum.map(&to_tree_element/1)
+
   def to_tree_element(%{"name" => name, "oid" => oid, "type" => "blob"}),
     do: TS.leaf(name, oid)
   def to_tree_element(%{"name" => name, "oid" => oid, "type" => "tree"}),
@@ -64,8 +65,9 @@ defmodule RemoteCheckout do
   
   def get_expand(tree, path), do: TS.get(tree, path ++ [@expand])
 
-  def export_tree(tree), do: TS.reduce(tree, &append/3, &append/3, [])
-  def append(acc, name, data), do: [{name, data}|acc]
+  def export_tree(tree), do: TS.reduce(tree,
+                fn acc, name, oid -> [{name, oid}|acc] end,
+                fn acc, name, tree -> [{name, tree}|acc] end, [])
 
   def enumerate_files(tree), do: TS.reduce(tree,
                 fn acc, name, oid -> [{name, oid}|acc] end,
