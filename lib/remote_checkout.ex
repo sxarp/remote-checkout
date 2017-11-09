@@ -15,17 +15,14 @@ defmodule RemoteCheckout do
   @token :token
 
   def fetch_tree(binf=%{@branch_name => _, @owner => _,
-    @repo_name => _, @token => _}, path \\ []) do
-    tt = target_tree(binf, path)
-    {export_tree(tt), enumerate_files(tt)}
-  end
+    @repo_name => _, @token => _}, path \\ []),
+    do: get_branch(binf) |> get_tree(binf) |>
+      expand_tree(binf) |> TS.get(path) |>
+      (fn t -> {export_tree(t), enumerate_files(t)} end).()
 
   def get_blobs(files, binf), do: files
     |> Enum.map(fn {_, oid} -> {oid, get_blob(oid, binf)} end)
     |> Map.new()
-
-  def target_tree(binf, path), do: get_branch(binf)
-    |> get_tree(binf) |> expand_tree(binf) |> TS.get(path)
 
   def get_branch(%{@branch_name => bn, @owner => ow, @repo_name => rn,
     @token => to}), do: FG.get_branch(bn, ow, rn, to)
@@ -44,24 +41,25 @@ defmodule RemoteCheckout do
   def grow_tree(tree, path, binf),
     do: tree |> get_expand(path) |> get_tree(binf) |> replace(tree, path)
 
-  def to_tree(tree), do: tree |> Enum.map(&to_tree_element/1)
-
-  def to_tree_element(%{"name" => name, "oid" => oid, "type" => "blob"}),
-    do: TS.leaf(name, oid)
-  def to_tree_element(%{"name" => name, "oid" => oid, "type" => "tree"}),
-    do: TS.tree(name, [TS.leaf(@expand, oid)])
+  def to_tree(tree), do: tree
+    |> Enum.map(fn
+      %{"name" => name, "oid" => oid, "type" => "blob"} ->
+        TS.leaf(name, oid)
+      %{"name" => name, "oid" => oid, "type" => "tree"} ->
+        TS.tree(name, [TS.leaf(@expand, oid)])
+    end)
   
   def replace(input, tree, path), do: TS.replace(tree, path, input)
 
-  def find_expand(tree), do: find_expand_raw(tree) |> manage_path()
-
-  def find_expand_raw(tree),
-    do: TS.find(tree, fn @expand, _oid -> true
-                           _name, _oid -> false end)
-
-  def manage_path(nil), do: nil
-  def manage_path(path), do: path |> Enum.reverse()
-    |> (fn [@expand|p] -> p end).() |> Enum.reverse()
+  def find_expand(tree),
+    do: TS.find(tree,
+      fn @expand, _oid -> true
+         _name, _oid -> false end) |>
+      (case do
+        nil -> nil
+        path -> path |> Enum.reverse() |>
+        (fn [@expand|p] -> p end).() |> Enum.reverse()
+      end)
   
   def get_expand(tree, path), do: TS.get(tree, path ++ [@expand])
 
