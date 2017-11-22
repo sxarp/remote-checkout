@@ -53,7 +53,7 @@ defmodule RemoteCheckout do
   def find_expand(tree),
     do: TS.find(tree, fn @expand, _oid -> true
       _name, _oid -> false end)
-    |> (case do nil -> nil path -> path |> Enum.reverse() |>
+    |> (case do nil -> nil; path -> path |> Enum.reverse() |>
         (fn [@expand|p] -> p end).() |> Enum.reverse() end)
 
   def get_expand(tree, path), do: TS.get(tree, path ++ [@expand])
