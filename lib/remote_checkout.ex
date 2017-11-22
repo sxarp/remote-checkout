@@ -16,9 +16,9 @@ defmodule RemoteCheckout do
 
   def fetch_tree(binf=%{@branch_name => _, @owner => _,
     @repo_name => _, @token => _}, path \\ []),
-    do: get_branch(binf) |> get_tree(binf) |>
-      expand_tree(binf) |> TS.get(path) |>
-      (fn t -> {export_tree(t), enumerate_files(t)} end).()
+    do: get_branch(binf) |> get_tree(binf)
+    |> expand_tree(binf) |> TS.get(path)
+    |> (fn t -> {export_tree(t), enumerate_files(t)} end).()
 
   def get_blobs(files, binf), do: files
     |> Enum.map(fn {_, oid} -> {oid, get_blob(oid, binf)} end)
@@ -34,8 +34,7 @@ defmodule RemoteCheckout do
     do: FG.get_blob(oid, ow, rn, to)
 
   def expand_tree(tree, binf),
-    do: (case find_expand(tree) do
-      nil -> tree
+    do: find_expand(tree) |> (case do nil -> tree
       path -> grow_tree(tree, path, binf) |> expand_tree(binf) end)
 
   def grow_tree(tree, path, binf),
@@ -48,19 +47,15 @@ defmodule RemoteCheckout do
       %{"name" => name, "oid" => oid, "type" => "tree"} ->
         TS.tree(name, [TS.leaf(@expand, oid)])
     end)
-  
+
   def replace(input, tree, path), do: TS.replace(tree, path, input)
 
   def find_expand(tree),
-    do: TS.find(tree,
-      fn @expand, _oid -> true
-         _name, _oid -> false end) |>
-      (case do
-        nil -> nil
-        path -> path |> Enum.reverse() |>
-        (fn [@expand|p] -> p end).() |> Enum.reverse()
-      end)
-  
+    do: TS.find(tree, fn @expand, _oid -> true
+      _name, _oid -> false end)
+    |> (case do nil -> nil path -> path |> Enum.reverse() |>
+        (fn [@expand|p] -> p end).() |> Enum.reverse() end)
+
   def get_expand(tree, path), do: TS.get(tree, path ++ [@expand])
 
   def export_tree(tree), do: TS.reduce(tree,
@@ -70,5 +65,4 @@ defmodule RemoteCheckout do
   def enumerate_files(tree), do: TS.reduce(tree,
                 fn acc, name, oid -> [{name, oid}|acc] end,
                 fn acc, _, oids -> oids ++ acc end, [])
-
 end
